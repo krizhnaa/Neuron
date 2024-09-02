@@ -50,4 +50,74 @@
       }
     }
   }
+  document.addEventListener('DOMContentLoaded', (event) => {
+    // Initialize button states from local storage on page load
+    const votedProposals = JSON.parse(localStorage.getItem('votedProposals')) || {};
+
+    // Function to highlight the buttons, disable them, and show the voted message if already voted
+    function updateButtons(proposalId, vote) {
+        // Reset button styles and enable state
+        document.querySelectorAll(`#yes-btn-${proposalId}, #no-btn-${proposalId}`).forEach(btn => {
+            btn.classList.remove('btn-selected');
+            btn.disabled = false;
+        });
+
+        // Highlight the selected button and disable all buttons
+        const selectedButton = vote === 'yes' ? document.getElementById('yes-btn-' + proposalId) : document.getElementById('no-btn-' + proposalId);
+        if (selectedButton) {
+            selectedButton.classList.add('btn-selected');
+        }
+
+        // Disable both buttons after a vote
+        document.getElementById('yes-btn-' + proposalId).disabled = true;
+        document.getElementById('no-btn-' + proposalId).disabled = true;
+
+        // Show the voted message
+        document.getElementById('voted-message-' + proposalId).style.display = 'inline';
+    }
+
+    // Apply button highlights and messages based on stored votes
+    for (const proposalId in votedProposals) {
+        if (votedProposals.hasOwnProperty(proposalId)) {
+            updateButtons(proposalId, votedProposals[proposalId]);
+        }
+    }
+
+    // Function to handle voting
+    window.submitVote = function(proposalId, vote) {
+        // Ensure the user hasn't already voted
+        if (votedProposals[proposalId]) {
+            return; // Exit if already voted
+        }
+
+        fetch('/proposals', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                proposal_id: proposalId,
+                vote: vote
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Update the UI with the new vote count
+                document.getElementById('yes-votes-' + proposalId).innerText = data.proposal.yes_votes;
+                document.getElementById('no-votes-' + proposalId).innerText = data.proposal.no_votes;
+
+                // Update and store the vote
+                votedProposals[proposalId] = vote;
+                localStorage.setItem('votedProposals', JSON.stringify(votedProposals));
+                
+                // Update button styles, disable buttons, and show the voted message
+                updateButtons(proposalId, vote);
+            }
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+        });
+    }
+});
 </script>

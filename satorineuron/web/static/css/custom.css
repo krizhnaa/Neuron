@@ -647,3 +647,27 @@ input[readonly] {
   cursor: not-allowed;      /* Not-allowed cursor to indicate non-editable field */
   border: 1px solid #0e040a; /* Optional: style the border to match your form #ced4da*/
 }
+
+.vote-btn {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: #f0f0f0;
+  cursor: pointer;
+}
+
+.vote-btn.btn-selected {
+  background-color: #4caf50; /* Highlight color */
+  color: white;
+  border: none;
+}
+
+.vote-btn:disabled {
+  cursor: not-allowed;
+}
+
+.voted-message {
+  color: #666666; /* gray color for the message */
+  font-weight: lighter;
+  font-size: 0.8rem;
+}
