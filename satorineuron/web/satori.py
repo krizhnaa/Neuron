@@ -1683,12 +1683,11 @@ proposals_list = [
 ]
 
 
-
 @app.route('/proposals', methods=['GET', 'POST'])
 @authRequired
 def proposals():
     def getVotes(wallet):
-        x = {
+        return {
             'communityVotes': start.server.getManifestVote(),
             'walletVotes': {k: v / 100 for k, v in start.server.getManifestVote(wallet).items()},
             'vaultVotes': ({k: v / 100 for k, v in start.server.getManifestVote(start.vault).items()}
@@ -1697,13 +1696,12 @@ def proposals():
                 'oracles': 0,
                 'inviters': 0,
                 'creators': 0,
-                'managers': 0})
+                'managers': 0,
+            })
         }
-        return x
 
     def getStreams(wallet):
-        streams = start.server.getSanctionVote(wallet, start.vault)
-        return streams
+        return start.server.getSanctionVote(wallet, start.vault)
 
     def accept_submission(passwordForm):
         _vault = start.openVault(password=passwordForm.password.data)
@@ -1713,16 +1711,27 @@ def proposals():
         proposal_id = data.get('proposal_id')
         vote = data.get('vote')  # 'yes' or 'no'
 
-        # Find the proposal by ID and update the vote count
-        for proposal in proposals_list:
-            if proposal['id'] == proposal_id:
-                if vote == 'yes':
-                    proposal['yes_votes'] += 1
-                elif vote == 'no':
-                    proposal['no_votes'] += 1
-                break
+        wallet = start.getWallet(network=start.network)
 
-        return jsonify({'status': 'success', 'proposal': proposal})
+        try:
+            # Use start.server.proposalVote to submit the vote
+            success = start.server.proposalVote(wallet, vote)
+            if success:
+                # Retrieve updated proposals from getProposals()
+                proposals = start.server.getProposals()  # Adjust this if needed to match your actual function
+                for proposal in proposals:
+                    if proposal['id'] == proposal_id:
+                        if vote == 'yes':
+                            proposal['yes_votes'] += 1
+                        elif vote == 'no':
+                            proposal['no_votes'] += 1
+                        break
+
+                return jsonify({'status': 'success', 'proposal': proposal})
+            else:
+                return jsonify({'status': 'failure', 'message': 'Vote submission failed.'}), 500
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': str(e)}), 500
 
     # Handle GET request: Render the proposal page with the proposals data
     myWallet = start.getWallet(network=start.network)
@@ -1735,7 +1744,7 @@ def proposals():
         'wallet': myWallet,
         'vault': start.vault,
         'streams': getStreams(myWallet),
-        'proposals': proposals_list,  # Pass the proposals to the template
+        'proposals': start.server.getProposals(),  # Use getProposals() to get the latest proposals
         **getVotes(myWallet)
     }
 
@@ -1745,8 +1754,12 @@ def proposals():
 @app.route('/proposals/data', methods=['GET'])
 def get_proposals():
     # Serve proposal data as JSON for the frontend
-    return jsonify({'proposals': proposals_list})
-
+    try:
+        proposals = start.server.getProposals()
+        return jsonify({'proposals': proposals})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+    
 
 @app.route('/vote/submit/manifest/wallet', methods=['POST'])
 @authRequired

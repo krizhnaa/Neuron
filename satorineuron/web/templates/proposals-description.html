@@ -34,7 +34,7 @@
         <br>
 
         <!-- Message for already voted users -->
-        <span id="voted-message-{{ proposal.id }}" class="voted-message" style="display: none;">You have already voted for this proposal.</span>
+        <span id="voted-message-{{ proposal.id}}" class="voted-message" style="display: none;">You have already voted for this proposal.</span>
         <br>
         <br>
       </p>
@@ -46,6 +46,7 @@
 <br>
 {% endfor %}
 {% endblock %}
+
 
 <script>
     document.addEventListener('DOMContentLoaded', (event) => {
@@ -72,7 +73,7 @@ function fetchProposals() {
 
 function submitVote(proposalId, vote) {
     if (localStorage.getItem('voted_' + proposalId)) {
-        return;
+        return; // Prevent resubmission if already voted
     }
 
     fetch('/proposals', {
@@ -93,6 +94,9 @@ function submitVote(proposalId, vote) {
             document.getElementById('no-votes-' + proposal.id).innerText = proposal.no_votes;
             localStorage.setItem('voted_' + proposal.id, vote);
             updateButtons(proposal.id, vote);
+            console.log(data.status);
+        } else {
+            console.error('Vote failed:', data.message);
         }
     })
     .catch((error) => {
@@ -117,4 +121,4 @@ function updateButtons(proposalId, vote) {
     votedMessage.style.display = 'block';
 }
 
-  </script>
+</script>
