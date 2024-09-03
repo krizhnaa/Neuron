@@ -1682,10 +1682,11 @@ proposals_list = [
     # Add more proposals as needed
 ]
 
+
+
 @app.route('/proposals', methods=['GET', 'POST'])
 @authRequired
 def proposals():
-
     def getVotes(wallet):
         x = {
             'communityVotes': start.server.getManifestVote(),
@@ -1723,32 +1724,28 @@ def proposals():
 
         return jsonify({'status': 'success', 'proposal': proposal})
 
+    # Handle GET request: Render the proposal page with the proposals data
     myWallet = start.getWallet(network=start.network)
 
-    if start.vault is not None and not start.vault.isEncrypted:
-        return render_template('proposals.html', **getResp({
-            'title': 'Proposals',
-            'network': start.network,
-            'vaultPasswordForm': presentVaultPasswordForm(),
-            'vaultOpened': True,
-            'wallet': myWallet,
-            'vault': start.vault,
-            'streams': getStreams(myWallet),
-            'proposals': proposals_list,  # Pass the proposals to the template
-            **getVotes(myWallet)
-        }))
-    
-    return render_template('proposals.html', **getResp({
+    context = {
         'title': 'Proposals',
         'network': start.network,
         'vaultPasswordForm': presentVaultPasswordForm(),
-        'vaultOpened': False,
+        'vaultOpened': start.vault is not None and not start.vault.isEncrypted,
         'wallet': myWallet,
         'vault': start.vault,
         'streams': getStreams(myWallet),
-        'proposals': proposals_list, # Pass the proposals to the template
+        'proposals': proposals_list,  # Pass the proposals to the template
         **getVotes(myWallet)
-    }))
+    }
+
+    return render_template('proposals.html', **getResp(context))
+
+
+@app.route('/proposals/data', methods=['GET'])
+def get_proposals():
+    # Serve proposal data as JSON for the frontend
+    return jsonify({'proposals': proposals_list})
 
 
 @app.route('/vote/submit/manifest/wallet', methods=['POST'])
@@ -1955,6 +1952,8 @@ def triggerRelay(topic: str = None):
     else:
         flash('failed to relay', 'error')
     return redirect(url_for('dashboard'))
+
+
 
 ###############################################################################
 ## Routes - subscription ######################################################

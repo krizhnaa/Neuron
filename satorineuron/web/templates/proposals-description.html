@@ -1,4 +1,4 @@
-<script src="./scripts.html"></script>
+{% block content %}
 {% for proposal in proposals %}
 <div class="row mb-0">
   <div class="col-xl-12 col-sm-12 mb-xl-0 mb-4">
@@ -15,12 +15,11 @@
       <!-- Image Section -->
       <center>
       <div class="card-body">
-        <img src="{{ proposal.image_url }}" alt="{{ proposal.title }}" class="img-fluid" 
-style="max-width: 100%; height: auto;"/>
+        <img src="{{ proposal.image_url }}" alt="{{ proposal.title }}" class="img-fluid" style="max-width: 100%; height: auto;"/>
       </div>
 
       <!-- Description Section -->
-      <p id='explaVault' class="mb-1 {% if darkmode %}dark-colors{% endif %}">
+      <p id="explaVault" class="mb-1 {% if darkmode %}dark-colors{% endif %}">
         {{ proposal.description }}
         <br>
         <br>
@@ -28,19 +27,94 @@ style="max-width: 100%; height: auto;"/>
         <br>
         No Votes: <span id="no-votes-{{ proposal.id }}">{{ proposal.no_votes }}</span>
         <br>
-        
-        <!-- Message for already voted users --> 
+
+        <!-- Vote Buttons -->
         <button id="yes-btn-{{ proposal.id }}" class="vote-btn" onclick="submitVote('{{ proposal.id }}', 'yes')">Vote Yes</button>
         <button id="no-btn-{{ proposal.id }}" class="vote-btn" onclick="submitVote('{{ proposal.id }}', 'no')">Vote No</button>
         <br>
+
+        <!-- Message for already voted users -->
         <span id="voted-message-{{ proposal.id }}" class="voted-message" style="display: none;">You have already voted for this proposal.</span>
         <br>
         <br>
       </p>
-      <center>
+      </center>
     </div>
   </div>
 </div>
 <br>
 <br>
 {% endfor %}
+{% endblock %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+    fetchProposals();
+});
+
+function fetchProposals() {
+    fetch('/proposals/data', { method: 'GET' })
+    .then(response => response.json())
+    .then(data => {
+        data.proposals.forEach(proposal => {
+            // Update UI with fetched data
+            document.getElementById('yes-votes-' + proposal.id).innerText = proposal.yes_votes;
+            document.getElementById('no-votes-' + proposal.id).innerText = proposal.no_votes;
+
+            // Check if the user has already voted
+            const userVote = localStorage.getItem('voted_' + proposal.id);
+            if (userVote) {
+                updateButtons(proposal.id, userVote);
+            }
+        });
+    }).catch(error => console.error('Error:', error));
+}
+
+function submitVote(proposalId, vote) {
+    if (localStorage.getItem('voted_' + proposalId)) {
+        return;
+    }
+
+    fetch('/proposals', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            proposal_id: proposalId,
+            vote: vote
+        }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            const proposal = data.proposal;
+            document.getElementById('yes-votes-' + proposal.id).innerText = proposal.yes_votes;
+            document.getElementById('no-votes-' + proposal.id).innerText = proposal.no_votes;
+            localStorage.setItem('voted_' + proposal.id, vote);
+            updateButtons(proposal.id, vote);
+        }
+    })
+    .catch((error) => {
+        console.error('Error:', error);
+    });
+}
+
+function updateButtons(proposalId, vote) {
+    const yesButton = document.getElementById('yes-btn-' + proposalId);
+    const noButton = document.getElementById('no-btn-' + proposalId);
+    const votedMessage = document.getElementById('voted-message-' + proposalId);
+
+    yesButton.disabled = true;
+    noButton.disabled = true;
+
+    if (vote === 'yes') {
+        yesButton.classList.add('btn-selected');
+    } else {
+        noButton.classList.add('btn-selected');
+    }
+
+    votedMessage.style.display = 'block';
+}
+
+  </script>
