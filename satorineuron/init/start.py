@@ -156,82 +156,180 @@ class StartupDag(StartupDagStruct, metaclass=SingletonMeta):
     def wallet(self) -> Union[EvrmoreWallet, RavencoinWallet]:
         return self._evrmoreWallet if self.env == 'prod' else self._ravencoinWallet
 
-    @property
-    def ravencoinWallet(self) -> RavencoinWallet:
-        if self._ravencoinWallet is None:
-            self._ravencoinWallet = RavencoinWallet(
-                config.walletPath('wallet.yaml'),
-                reserve=0.25,
-                isTestnet=self.networkIsTest('ravencoin'))
-        return self._ravencoinWallet
+    # @property
+    # def ravencoinWallet(self) -> RavencoinWallet:
+    #     if self._ravencoinWallet is None:
+    #         self._ravencoinWallet = RavencoinWallet(
+    #             config.walletPath('wallet.yaml'),
+    #             reserve=0.25,
+    #             isTestnet=self.networkIsTest('ravencoin'))
+    #     return self._ravencoinWallet
 
-    @property
-    def evrmoreWallet(self) -> EvrmoreWallet:
-        if self._evrmoreWallet is None:
-            self._evrmoreWallet = EvrmoreWallet(
-                config.walletPath('wallet.yaml'),
-                reserve=0.25,
-                isTestnet=self.networkIsTest('evrmore'))
-        return self._evrmoreWallet
+    # @property
+    # def evrmoreWallet(self) -> EvrmoreWallet:
+    #     if self._evrmoreWallet is None:
+    #         self._evrmoreWallet = EvrmoreWallet(
+    #             config.walletPath('wallet.yaml'),
+    #             reserve=0.25,
+    #             isTestnet=self.networkIsTest('evrmore'))
+    #     return self._evrmoreWallet
 
-    def ravencoinVault(
-        self,
-        password: Union[str, None] = None,
-        create: bool = False,
-    ) -> Union[RavencoinWallet, None]:
-        if self._ravencoinVault is None or (self._ravencoinVault.password is None and password is not None):
-            try:
-                vaultPath = config.walletPath('vault.yaml')
-                if os.path.exists(vaultPath) or create:
-                    self._ravencoinVault = RavencoinWallet(
-                        vaultPath,
-                        reserve=0.25,
-                        isTestnet=self.networkIsTest('ravencoin'),
-                        password=password)
-            except Exception as e:
-                logging.error('failed to open vault', color='red')
-                raise e
-            if password is None:
-                logging.info('loaded raw vault', color='green')
+    # def ravencoinVault(
+    #     self,
+    #     password: Union[str, None] = None,
+    #     create: bool = False,
+    # ) -> Union[RavencoinWallet, None]:
+    #     if self._ravencoinVault is None or (self._ravencoinVault.password is None and password is not None):
+    #         try:
+    #             vaultPath = config.walletPath('vault.yaml')
+    #             if os.path.exists(vaultPath) or create:
+    #                 self._ravencoinVault = RavencoinWallet(
+    #                     vaultPath,
+    #                     reserve=0.25,
+    #                     isTestnet=self.networkIsTest('ravencoin'),
+    #                     password=password)
+    #         except Exception as e:
+    #             logging.error('failed to open vault', color='red')
+    #             raise e
+    #         if password is None:
+    #             logging.info('loaded raw vault', color='green')
+    #         else:
+    #             logging.info('accessed vault', color='green')
+    #         return self._ravencoinVault
+    #     return self._ravencoinVault
+
+    # def evrmoreVault(
+    #     self,
+    #     password: Union[str, None] = None,
+    #     create: bool = False,
+    # ) -> Union[RavencoinWallet, None]:
+    #     if self._evrmoreVault is None:
+    #         try:
+    #             vaultPath = config.walletPath('vault.yaml')
+    #             if os.path.exists(vaultPath) or create:
+    #                 self._evrmoreVault = EvrmoreWallet(
+    #                     vaultPath,
+    #                     reserve=0.25,
+    #                     isTestnet=self.networkIsTest('evrmore'),
+    #                     password=password)
+    #         except Exception as e:
+    #             logging.error('failed to open vault', color='red')
+    #             raise e
+    #         if password is None:
+    #             logging.info('loaded vault', color='green')
+    #         else:
+    #             logging.info('accessed vault', color='green')
+    #         return self._evrmoreVault
+    #     elif self._evrmoreVault.password is None and password is not None:
+    #         self._evrmoreVault.open(password)
+    #     return self._evrmoreVault
+    
+    def initialize_wallet_and_vault(self, network: str = None):
+        # Initialize wallets
+        network = network or self.network
+        if self.networkIsTest(network):
+            self._ravencoinWallet = self._initialize_wallet('ravencoin')
+            self._ravencoinVault = self._initialize_vault("ravencoin", None, False)
+        self._evrmoreWallet = self._initialize_wallet('evrmore')
+        self._evrmoreVault = self._initialize_vault("evrmore", None, False)
+
+        for network in ['ravencoin', 'evrmore']:
+            wallet = getattr(self, f'_{network}Wallet')
+            vault = getattr(self, f'_{network}Vault')
+            
+            if wallet:
+                logging.info(f'{network.capitalize()} wallet initialized', color="green")
             else:
-                logging.info('accessed vault', color='green')
-            return self._ravencoinVault
-        return self._ravencoinVault
+                logging.info(f'{network.capitalize()} wallet not initialized', color="red")
 
-    def evrmoreVault(
-        self,
-        password: Union[str, None] = None,
-        create: bool = False,
-    ) -> Union[RavencoinWallet, None]:
-        if self._evrmoreVault is None:
-            try:
-                vaultPath = config.walletPath('vault.yaml')
-                if os.path.exists(vaultPath) or create:
-                    self._evrmoreVault = EvrmoreWallet(
-                        vaultPath,
-                        reserve=0.25,
-                        isTestnet=self.networkIsTest('evrmore'),
-                        password=password)
-            except Exception as e:
-                logging.error('failed to open vault', color='red')
-                raise e
-            if password is None:
-                logging.info('loaded vault', color='green')
+            if vault:
+                logging.info(f'{network.capitalize()} vault initialized (not opened)', color="green")
             else:
-                logging.info('accessed vault', color='green')
-            return self._evrmoreVault
-        elif self._evrmoreVault.password is None and password is not None:
-            self._evrmoreVault.open(password)
-        return self._evrmoreVault
+                logging.info(f'{network.capitalize()} vault not initialized', color="red")
+
+        # Check if at least one wallet and one vault are initialized
+        if not (self._ravencoinWallet or self._evrmoreWallet):
+            logging.info("No wallets initialized", color="red")
+        if not (self._ravencoinVault or self._evrmoreVault):
+            logging.info("No vaults initialized", color="red")
+
+    # new method
+    def _initialize_wallet(self, network: str) -> Union[EvrmoreWallet, RavencoinWallet, None]:
+        wallet_path = config.walletPath(f'wallet.yaml')
+        wallet_class = EvrmoreWallet if network == 'evrmore' else RavencoinWallet
+        wallet_attr = '_evrmoreWallet' if network == 'evrmore' else '_ravencoinWallet'
+
+        if not os.path.exists(wallet_path):
+            logging.warning(f'{network} wallet file does not exist', color='yellow')
+            return None
+        try:
+            existing_wallet = getattr(self, wallet_attr)
+            if existing_wallet is not None:
+                return existing_wallet
+
+            wallet = wallet_class(
+                walletPath=wallet_path,
+                temporary=False,
+                reserve=0.25,
+                isTestnet=self.networkIsTest(network),
+                password=None,
+                use=None
+            )
+
+            setattr(self, wallet_attr, wallet)
+            logging.info(f'initialized {network} wallet', color='green')
+            return wallet
+        except Exception as e:
+            logging.error(f'failed to initialize {network} wallet: {str(e)}', color='red')
+            return None
+        
+    # new method
+    def _initialize_vault(self, network: str, password: Union[str, None] = None, create: bool = False) -> Union[EvrmoreWallet, RavencoinWallet, None]:
+        vault_path = config.walletPath('vault.yaml')
+        wallet_class = EvrmoreWallet if network == 'evrmore' else RavencoinWallet
+        vault_attr = '_evrmoreVault' if network == 'evrmore' else '_ravencoinVault'
+
+        if not os.path.exists(vault_path) and not create:
+            return None
+        try:
+            existing_vault = getattr(self, vault_attr)
+            if existing_vault is not None:
+                if existing_vault.password is None and password is not None:
+                    existing_vault.open(password)
+                    logging.info(f'opened existing {network} vault with password', color='green')
+                    return existing_vault
+                elif password is None or existing_vault.password == password:
+                    return existing_vault
+
+            vault = wallet_class(
+                walletPath=vault_path,
+                reserve=0.25,
+                isTestnet=self.networkIsTest(network),
+                password=password
+            )
+
+            if password is None:
+                logging.info(f'loaded raw {network} vault', color='green')
+            else:
+                logging.info(f'accessed {network} vault', color='green')
+
+            setattr(self, vault_attr, vault)
+            return vault
+        except Exception as e:
+            logging.error(f'failed to open {network} vault: {str(e)}', color='red')
+            raise e
 
     def networkIsTest(self, network: str = None) -> bool:
         return network.lower().strip() in ('testnet', 'test', 'ravencoin', 'rvn')
 
     def getWallet(self, network: str = None) -> Union[EvrmoreWallet, RavencoinWallet]:
         network = network or self.network
+        # if self.networkIsTest(network):
+        #     return self.ravencoinWallet
+        # return self.evrmoreWallet
         if self.networkIsTest(network):
-            return self.ravencoinWallet
-        return self.evrmoreWallet
+            return self._ravencoinWallet
+        return self._evrmoreWallet
 
     def getVault(
         self,
@@ -240,12 +338,16 @@ class StartupDag(StartupDagStruct, metaclass=SingletonMeta):
         create: bool = False,
     ) -> Union[EvrmoreWallet, RavencoinWallet]:
         network = network or self.network
-        if self.networkIsTest(network):
-            return self.ravencoinVault(password=password, create=create)
-        return self.evrmoreVault(password=password, create=create)
-
+        # if self.networkIsTest(network):
+        #     return self.ravencoinVault(password=password, create=create)
+        # return self.evrmoreVault(password=password, create=create)
+        if self.networkIsTest(network): 
+            return self._initialize_vault("ravencoin", password, create)
+        return self._initialize_vault("evrmore", password, create)
+    
     def openWallet(self, network: Union[str, None] = None) -> Union[EvrmoreWallet, RavencoinWallet]:
         wallet = self.getWallet(network)
+        logging.info('opening wallet', color='green');
         if self.lastWalletCall + self.electrumCooldown < time.time():
             self.lastWalletCall = time.time()
             wallet = wallet()
@@ -264,14 +366,22 @@ class StartupDag(StartupDagStruct, metaclass=SingletonMeta):
 
     def closeVault(self) -> Union[RavencoinWallet, EvrmoreWallet, None]:
         ''' close the vault, reopen it without decrypting it. '''
-        try:
-            self._ravencoinVault.close()
-        except Exception as _:
-            pass
-        try:
-            self._evrmoreVault.close()
-        except Exception as _:
-            pass
+        # try:
+        #     self._ravencoinVault.close()
+        # except Exception as _:
+        #     pass
+        # try:
+        #     self._evrmoreVault.close()
+        # except Exception as _:
+        #     pass
+        for vault_attr in ['_ravencoinVault', '_evrmoreVault']:
+            vault = getattr(self, vault_attr)
+            if vault is not None:
+                try:
+                    vault.close()
+                except Exception as e:
+                    logging.error(f'Error closing vault: {str(e)}', color='red')
+            # setattr(self, vault_attr, None)
 
     def openVault(
         self,
@@ -284,6 +394,7 @@ class StartupDag(StartupDagStruct, metaclass=SingletonMeta):
         it. this allows us to get it's balance, but not spend from it.
         '''
         self.closeVault()
+        network = network or self.network
         vault = self.getVault(network, password, create)
         if vault is not None and self.lastVaultCall + self.electrumCooldown < time.time():
             self.lastVaultCall = time.time()
@@ -309,8 +420,9 @@ class StartupDag(StartupDagStruct, metaclass=SingletonMeta):
         self.ranOnce = True
         self.setMiningMode()
         self.createRelayValidation()
-        self.getWallet()
-        self.getVault()
+        # self.getWallet()
+        # self.getVault()
+        self.initialize_wallet_and_vault()
         self.checkin()
         self.verifyCaches()
         # self.startSynergyEngine()

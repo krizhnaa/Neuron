@@ -1266,6 +1266,7 @@ def wallet(network: str = 'main'):
         #    flash('unable to open vault')
 
     myWallet = start.openWallet(network=network)
+    logging.debug('myWallet got', myWallet, color='yellow')
     alias = myWallet.alias or start.server.getWalletAlias()
     if config.get().get('wallet lock'):
         if request.method == 'POST':
@@ -1374,7 +1375,6 @@ def presentVaultPasswordForm():
 @app.route('/vault', methods=['GET', 'POST'])
 @authRequired
 def vault():
-
     def defaultMineToVault():
         try:
             enableMineToVault
@@ -1397,6 +1397,8 @@ def vault():
 
     if request.method == 'POST':
         accept_submittion(forms.VaultPassword(formdata=request.form))
+    
+    # logging.info("state", start.vault.isEncrypted, color="yellow")
     if start.vault is not None and not start.vault.isEncrypted:
         # start.workingUpdates.put('downloading balance...')
         from satorilib.api.wallet.eth import EthereumWallet
